@@ -1,0 +1,8 @@
+{
+  "name": "ওয়াহীদিয়া হাজিরা",
+  "description": "ওয়াহীদিয়া ইসলামিয়া লাইব্রেরীর কর্মী হাজিরা, ব্রেক, ছুটি, শাখা বদলি ও অ্যাডমিন রিপোর্টিং অ্যাপ।",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
