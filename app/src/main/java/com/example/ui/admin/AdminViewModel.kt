@@ -9,6 +9,7 @@ import com.example.data.db.BreakEntity
 import com.example.data.db.HolidayEntity
 import com.example.data.db.LeaveEntity
 import com.example.data.db.LeaveTypeEntity
+import com.example.data.db.OrgWorkspace
 import com.example.data.db.SettingEntity
 import com.example.data.db.ShiftEntity
 import com.example.data.db.StaffEntity
@@ -22,11 +23,14 @@ import com.example.domain.DashboardReport
 import com.example.domain.StaffMonthlyReport
 import com.example.domain.StaffSummaryEntry
 import com.example.domain.YearlyStaffRow
+import com.google.firebase.firestore.FirebaseFirestoreException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -67,10 +71,12 @@ data class AdminControlState(
     val breakFrom: String = "2026-11-01",
     val breakTo: String = "2026-11-17",
     val toastMessage: String? = null,
-    val toastOk: Boolean = true
+    val toastOk: Boolean = true,
+    val importingData: Boolean = false
 )
 
 data class AdminDataSnapshot(
+    val workspace: OrgWorkspace? = null,
     val settings: Map<String, String> = emptyMap(),
     val settingsList: List<SettingEntity> = emptyList(),
     val branches: List<BranchEntity> = emptyList(),
@@ -83,7 +89,8 @@ data class AdminDataSnapshot(
     val attendance: List<AttendanceEntity> = emptyList(),
     val breaks: List<BreakEntity> = emptyList(),
     val todayReal: String = "2026-11-17",
-    val initialized: Boolean = false
+    val initialized: Boolean = false,
+    val streamError: String? = null
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -97,9 +104,15 @@ class AdminViewModel(
 
     private val selectedYearFlow = MutableStateFlow(2026)
 
+    val effectiveOrgId: String get() = repository.effectiveOrgId
+    val isBootstrappedAdmin: Boolean get() = repository.isBootstrappedAdmin()
+
     init {
         viewModelScope.launch {
-            repository.ensureSeeded()
+            val seedRes = repository.ensureSeeded()
+            if (seedRes.isFailure) {
+                showToast("ক্লাউড ডেটাবেজ প্রস্তুত করতে সমস্যা: ${seedRes.exceptionOrNull()?.localizedMessage ?: ""}", ok = false)
+            }
             val cfg = repository.getSettingsMap()
             val (today, _, _) = AttendanceCalculator.nowInTimezone(cfg["Timezone"] ?: "Asia/Dhaka")
             val ym = today.take(7)
@@ -142,11 +155,16 @@ class AdminViewModel(
     }
 
     @Suppress("UNCHECKED_CAST")
-    val snapshot: StateFlow<AdminDataSnapshot> = combine(coreBundleA, coreBundleB) { a, b ->
+    val snapshot: StateFlow<AdminDataSnapshot> = combine(
+        coreBundleA,
+        coreBundleB,
+        repository.observeWorkspace
+    ) { a, b, ws ->
         val settingsList = a[0] as List<SettingEntity>
         val settings = AttendanceCalculator.settingsMap(settingsList)
         val (todayReal, _, _) = AttendanceCalculator.nowInTimezone(settings["Timezone"] ?: "Asia/Dhaka")
         AdminDataSnapshot(
+            workspace = ws,
             settings = settings,
             settingsList = settingsList,
             branches = a[1] as List<BranchEntity>,
@@ -160,6 +178,18 @@ class AdminViewModel(
             breaks = b[4] as List<BreakEntity>,
             todayReal = todayReal,
             initialized = true
+        )
+    }.catch { error ->
+        val firestoreError = generateSequence(error) { it.cause }
+            .filterIsInstance<FirebaseFirestoreException>()
+            .firstOrNull()
+        if (firestoreError == null && error is CancellationException) throw error
+        val rootError = firestoreError ?: error
+        emit(
+            AdminDataSnapshot(
+                initialized = true,
+                streamError = rootError.message ?: "ক্লাউড ডেটা লোড করতে সমস্যা হয়েছে"
+            )
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AdminDataSnapshot())
 
@@ -239,6 +269,15 @@ class AdminViewModel(
 
     private fun showToast(msg: String, ok: Boolean = true) {
         _controls.update { it.copy(toastMessage = msg, toastOk = ok) }
+    }
+
+    private fun showResultToast(res: Result<Unit>, successMsg: String) {
+        res.fold(
+            onSuccess = { showToast(successMsg, true) },
+            onFailure = { err ->
+                showToast("ব্যর্থ: ${err.localizedMessage ?: "অনুমতি বা নেটওয়ার্ক ত্রুটি"}", false)
+            }
+        )
     }
 
     // Computed Reports
@@ -447,17 +486,16 @@ class AdminViewModel(
         }
     }
 
-    fun saveBreak(id: Int, code: String, date: String, start: String, end: String) {
+    fun saveBreak(docId: String, code: String, date: String, start: String, end: String) {
         viewModelScope.launch {
-            val res = repository.saveBreak(id, code, date, start, end)
+            val res = repository.saveBreak(docId, code, date, start, end)
             showToast(res.message, res.ok)
         }
     }
 
-    fun deleteBreak(id: Int) {
+    fun deleteBreak(docId: String) {
         viewModelScope.launch {
-            repository.deleteBreak(id)
-            showToast("ব্রেক মুছে ফেলা হয়েছে")
+            showResultToast(repository.deleteBreak(docId), "ব্রেক মুছে ফেলা হয়েছে")
         }
     }
 
@@ -468,17 +506,18 @@ class AdminViewModel(
         }
     }
 
-    fun decideLeave(id: Int, status: String, note: String) {
+    fun decideLeave(docId: String, status: String, note: String) {
         viewModelScope.launch {
-            repository.decideLeave(id, status, note)
-            showToast(if (status == "Approved") "অনুমোদিত হয়েছে" else "প্রত্যাখ্যাত হয়েছে")
+            showResultToast(
+                repository.decideLeave(docId, status, note),
+                if (status == "Approved") "অনুমোদিত হয়েছে" else "প্রত্যাখ্যাত হয়েছে"
+            )
         }
     }
 
-    fun deleteLeave(id: Int) {
+    fun deleteLeave(docId: String) {
         viewModelScope.launch {
-            repository.deleteLeave(id)
-            showToast("মুছে ফেলা হয়েছে")
+            showResultToast(repository.deleteLeave(docId), "মুছে ফেলা হয়েছে")
         }
     }
 
@@ -489,9 +528,9 @@ class AdminViewModel(
         }
     }
 
-    fun deleteTransfer(id: Int) {
+    fun deleteTransfer(docId: String) {
         viewModelScope.launch {
-            val res = repository.deleteTransfer(id)
+            val res = repository.deleteTransfer(docId)
             showToast(res.message, res.ok)
         }
     }
@@ -512,78 +551,111 @@ class AdminViewModel(
 
     fun saveStaff(entity: StaffEntity) {
         viewModelScope.launch {
-            repository.saveStaff(entity)
-            showToast("কর্মী সংরক্ষিত হয়েছে")
+            showResultToast(repository.saveStaff(entity), "কর্মী সংরক্ষিত হয়েছে")
         }
     }
 
-    fun deleteStaff(id: Int) {
+    fun deleteStaff(docId: String) {
         viewModelScope.launch {
-            repository.deleteStaff(id)
-            showToast("কর্মী মুছে ফেলা হয়েছে")
+            showResultToast(repository.deleteStaff(docId), "কর্মী মুছে ফেলা হয়েছে")
         }
     }
 
     fun saveLeaveType(entity: LeaveTypeEntity) {
         viewModelScope.launch {
-            repository.saveLeaveType(entity)
-            showToast("ছুটির ধরন সংরক্ষিত হয়েছে")
+            showResultToast(repository.saveLeaveType(entity), "ছুটির ধরন সংরক্ষিত হয়েছে")
         }
     }
 
-    fun deleteLeaveType(id: Int) {
+    fun deleteLeaveType(docId: String) {
         viewModelScope.launch {
-            repository.deleteLeaveType(id)
-            showToast("ছুটির ধরন মুছে ফেলা হয়েছে")
+            showResultToast(repository.deleteLeaveType(docId), "ছুটির ধরন মুছে ফেলা হয়েছে")
         }
     }
 
     fun saveHoliday(entity: HolidayEntity) {
         viewModelScope.launch {
-            repository.saveHoliday(entity)
-            showToast("সরকারি ছুটি সংরক্ষিত হয়েছে")
+            showResultToast(repository.saveHoliday(entity), "সরকারি ছুটি সংরক্ষিত হয়েছে")
         }
     }
 
-    fun deleteHoliday(id: Int) {
+    fun deleteHoliday(docId: String) {
         viewModelScope.launch {
-            repository.deleteHoliday(id)
-            showToast("সরকারি ছুটি মুছে ফেলা হয়েছে")
+            showResultToast(repository.deleteHoliday(docId), "সরকারি ছুটি মুছে ফেলা হয়েছে")
         }
     }
 
     fun saveShift(entity: ShiftEntity) {
         viewModelScope.launch {
-            repository.saveShift(entity)
-            showToast("শিফট সংরক্ষিত হয়েছে")
+            showResultToast(repository.saveShift(entity), "শিফট সংরক্ষিত হয়েছে")
         }
     }
 
-    fun deleteShift(id: Int) {
+    fun deleteShift(docId: String) {
         viewModelScope.launch {
-            repository.deleteShift(id)
-            showToast("শিফট মুছে ফেলা হয়েছে")
+            showResultToast(repository.deleteShift(docId), "শিফট মুছে ফেলা হয়েছে")
         }
     }
 
     fun saveBranch(entity: BranchEntity) {
         viewModelScope.launch {
-            repository.saveBranch(entity)
-            showToast("শাখা সংরক্ষিত হয়েছে")
+            showResultToast(repository.saveBranch(entity), "শাখা সংরক্ষিত হয়েছে")
         }
     }
 
-    fun deleteBranch(id: Int) {
+    fun deleteBranch(docId: String) {
         viewModelScope.launch {
-            repository.deleteBranch(id)
-            showToast("শাখা মুছে ফেলা হয়েছে")
+            showResultToast(repository.deleteBranch(docId), "শাখা মুছে ফেলা হয়েছে")
         }
     }
 
     fun saveSettingsBatch(updates: List<SettingEntity>) {
         viewModelScope.launch {
-            updates.forEach { repository.saveSetting(it) }
-            showToast("সেটিংস সংরক্ষিত হয়েছে")
+            var failed: Throwable? = null
+            for (item in updates) {
+                val r = repository.saveSetting(item)
+                if (r.isFailure) {
+                    failed = r.exceptionOrNull()
+                    break
+                }
+            }
+            if (failed == null) {
+                showToast("সেটিংস সংরক্ষিত হয়েছে")
+            } else {
+                showToast("ব্যর্থ: ${failed.localizedMessage ?: "ত্রুটি"}", false)
+            }
+        }
+    }
+
+    fun addAuthorizedMemberUid(uid: String) {
+        viewModelScope.launch {
+            val res = repository.addAuthorizedMemberUid(uid)
+            showToast(res.message, res.ok)
+        }
+    }
+
+    fun switchWorkspaceOrgId(orgIdInput: String) {
+        val cleaned = orgIdInput.trim()
+        if (cleaned.isNotEmpty() && !Regex("^[a-zA-Z0-9_\\-]{1,128}$").matches(cleaned)) {
+            showToast("সঠিক Workspace ID দিন (শুধু ইংরেজি অক্ষর/সংখ্যা/_/-)", false)
+            return
+        }
+        viewModelScope.launch {
+            prefs.saveCustomOrgId(cleaned)
+            showToast("ওয়ার্কস্পেস পরিবর্তন হয়েছে")
+        }
+    }
+
+    fun importNeonJson(jsonText: String) {
+        if (jsonText.isBlank()) {
+            showToast("JSON ডেটা দিন", false)
+            return
+        }
+        viewModelScope.launch {
+            _controls.update { it.copy(importingData = true) }
+            val res = repository.importNeonJson(jsonText)
+            _controls.update { it.copy(importingData = false) }
+            showToast(res.message, res.ok)
         }
     }
 

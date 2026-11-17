@@ -69,7 +69,7 @@ fun AdminStaffSetupSection(
     branches: List<BranchEntity>,
     shifts: List<ShiftEntity>,
     onSaveStaff: (StaffEntity) -> Unit,
-    onDeleteStaff: (Int) -> Unit
+    onDeleteStaff: (String) -> Unit
 ) {
     var editing by remember { mutableStateOf<StaffEntity?>(null) }
     var deleteTarget by remember { mutableStateOf<StaffEntity?>(null) }
@@ -158,7 +158,7 @@ fun AdminStaffSetupSection(
 
         AlertDialog(
             onDismissRequest = { editing = null },
-            title = { Text(if (ed.id == 0) "নতুন কর্মী" else "কর্মী সম্পাদনা", fontWeight = FontWeight.Bold) },
+            title = { Text(if (ed.docId.isBlank()) "নতুন কর্মী" else "কর্মী সম্পাদনা", fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     modifier = Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
@@ -250,7 +250,7 @@ fun AdminStaffSetupSection(
         ConfirmActionDialog(
             title = "কর্মী মুছবেন?",
             message = "${del.code} · ${del.name} কে কর্মী তালিকা থেকে মুছে ফেলা হবে।",
-            onConfirm = { onDeleteStaff(del.id); deleteTarget = null },
+            onConfirm = { onDeleteStaff(del.docId); deleteTarget = null },
             onDismiss = { deleteTarget = null }
         )
     }
@@ -260,7 +260,7 @@ fun AdminStaffSetupSection(
 fun AdminLeaveTypesSetupSection(
     leaveTypes: List<LeaveTypeEntity>,
     onSave: (LeaveTypeEntity) -> Unit,
-    onDelete: (Int) -> Unit
+    onDelete: (String) -> Unit
 ) {
     var editing by remember { mutableStateOf<LeaveTypeEntity?>(null) }
 
@@ -291,7 +291,7 @@ fun AdminLeaveTypesSetupSection(
                     IconButton(onClick = { editing = lt }) {
                         Icon(Icons.Default.Edit, contentDescription = "সম্পাদনা", tint = EmeraldPrimary)
                     }
-                    IconButton(onClick = { onDelete(lt.id) }) {
+                    IconButton(onClick = { onDelete(lt.docId) }) {
                         Icon(Icons.Default.DeleteOutline, contentDescription = "মুছুন", tint = PunchRed)
                     }
                 }
@@ -344,7 +344,7 @@ fun AdminHolidaysSetupSection(
     branches: List<BranchEntity>,
     todayReal: String,
     onSave: (HolidayEntity) -> Unit,
-    onDelete: (Int) -> Unit
+    onDelete: (String) -> Unit
 ) {
     var editing by remember { mutableStateOf<HolidayEntity?>(null) }
 
@@ -370,7 +370,7 @@ fun AdminHolidaysSetupSection(
                         Text("শাখা: ${h.branch.ifBlank { "সব শাখা" }}", style = MaterialTheme.typography.labelSmall, color = TealInfo)
                     }
                     IconButton(onClick = { editing = h }) { Icon(Icons.Default.Edit, contentDescription = "সম্পাদনা", tint = EmeraldPrimary) }
-                    IconButton(onClick = { onDelete(h.id) }) { Icon(Icons.Default.DeleteOutline, contentDescription = "মুছুন", tint = PunchRed) }
+                    IconButton(onClick = { onDelete(h.docId) }) { Icon(Icons.Default.DeleteOutline, contentDescription = "মুছুন", tint = PunchRed) }
                 }
             }
         }

@@ -1,0 +1,243 @@
+{
+  "entities": {
+    "OrgWorkspace": {
+      "title": "OrgWorkspace",
+      "description": "Organization attendance workspace root",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "orgName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "FieldValue.serverTimestamp()" }
+      },
+      "required": ["ownerId", "memberUids", "orgName", "createdAt", "updatedAt"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Key-value organization setting",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "key": { "type": "string" },
+        "value": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "memberUids", "key", "value", "createdAt", "updatedAt"]
+    },
+    "Branch": {
+      "title": "Branch",
+      "description": "Organization branch with GPS geofence coordinates",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "branch": { "type": "string" },
+        "lat": { "type": "string" },
+        "lng": { "type": "string" },
+        "radius": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "memberUids", "branch", "lat", "lng", "radius", "createdAt", "updatedAt"]
+    },
+    "Shift": {
+      "title": "Shift",
+      "description": "Work shift schedule",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "shift": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "memberUids", "shift", "startTime", "endTime", "createdAt", "updatedAt"]
+    },
+    "Staff": {
+      "title": "Staff",
+      "description": "Employee profile and biometric vector",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "code": { "type": "string" },
+        "name": { "type": "string" },
+        "designation": { "type": "string" },
+        "branch": { "type": "string" },
+        "shift": { "type": "string" },
+        "pin": { "type": "string" },
+        "status": { "type": "string" },
+        "weeklyOff": { "type": "string" },
+        "joinDate": { "type": "string" },
+        "leaveDate": { "type": "string" },
+        "reservedDays": { "type": "string" },
+        "probationMonths": { "type": "string" },
+        "faceJson": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "memberUids", "code", "name", "designation", "branch", "shift", "pin", "status", "weeklyOff", "joinDate", "leaveDate", "reservedDays", "probationMonths", "faceJson", "createdAt", "updatedAt"]
+    },
+    "Holiday": {
+      "title": "Holiday",
+      "description": "Public or branch-specific holiday",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "dateFrom": { "type": "string" },
+        "dateTo": { "type": "string" },
+        "name": { "type": "string" },
+        "branch": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "memberUids", "dateFrom", "dateTo", "name", "branch", "createdAt", "updatedAt"]
+    },
+    "LeaveType": {
+      "title": "LeaveType",
+      "description": "Leave category quota and probation rule",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "ltype": { "type": "string" },
+        "days": { "type": "string" },
+        "paid": { "type": "string" },
+        "kind": { "type": "string" },
+        "probation": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "memberUids", "ltype", "days", "paid", "kind", "probation", "createdAt", "updatedAt"]
+    },
+    "Leave": {
+      "title": "Leave",
+      "description": "Employee leave record or application",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "code": { "type": "string" },
+        "dateFrom": { "type": "string" },
+        "dateTo": { "type": "string" },
+        "typ": { "type": "string" },
+        "note": { "type": "string" },
+        "status": { "type": "string" },
+        "appliedOn": { "type": "string" },
+        "reason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "memberUids", "code", "dateFrom", "dateTo", "typ", "note", "status", "appliedOn", "reason", "createdAt", "updatedAt"]
+    },
+    "Transfer": {
+      "title": "Transfer",
+      "description": "Employee branch transfer history",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "code": { "type": "string" },
+        "effDate": { "type": "string" },
+        "fromBranch": { "type": "string" },
+        "toBranch": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "memberUids", "code", "effDate", "fromBranch", "toBranch", "createdAt", "updatedAt"]
+    },
+    "Attendance": {
+      "title": "Attendance",
+      "description": "Daily staff attendance punch record",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "date": { "type": "string" },
+        "code": { "type": "string" },
+        "name": { "type": "string" },
+        "branch": { "type": "string" },
+        "inTime": { "type": "string" },
+        "outTime": { "type": "string" },
+        "inDist": { "type": "string" },
+        "outDist": { "type": "string" },
+        "source": { "type": "string" },
+        "note": { "type": "string" },
+        "upd": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "memberUids", "date", "code", "name", "branch", "inTime", "outTime", "inDist", "outDist", "source", "note", "upd", "createdAt", "updatedAt"]
+    },
+    "Break": {
+      "title": "Break",
+      "description": "Daily staff break interval record",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "date": { "type": "string" },
+        "code": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "source": { "type": "string" },
+        "upd": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "memberUids", "date", "code", "startTime", "endTime", "source", "upd", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/orgs/{orgId}": {
+      "schema": { "$ref": "#/entities/OrgWorkspace" },
+      "description": "Organization root document"
+    },
+    "/orgs/{orgId}/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/Setting" },
+      "description": "Organization settings"
+    },
+    "/orgs/{orgId}/branches/{branchId}": {
+      "schema": { "$ref": "#/entities/Branch" },
+      "description": "Organization branches"
+    },
+    "/orgs/{orgId}/shifts/{shiftId}": {
+      "schema": { "$ref": "#/entities/Shift" },
+      "description": "Organization shifts"
+    },
+    "/orgs/{orgId}/staff/{staffId}": {
+      "schema": { "$ref": "#/entities/Staff" },
+      "description": "Organization staff members"
+    },
+    "/orgs/{orgId}/holidays/{holidayId}": {
+      "schema": { "$ref": "#/entities/Holiday" },
+      "description": "Organization holidays"
+    },
+    "/orgs/{orgId}/leave_types/{leaveTypeId}": {
+      "schema": { "$ref": "#/entities/LeaveType" },
+      "description": "Leave types"
+    },
+    "/orgs/{orgId}/leaves/{leaveId}": {
+      "schema": { "$ref": "#/entities/Leave" },
+      "description": "Employee leaves and applications"
+    },
+    "/orgs/{orgId}/transfers/{transferId}": {
+      "schema": { "$ref": "#/entities/Transfer" },
+      "description": "Branch transfer history"
+    },
+    "/orgs/{orgId}/attendance/{attId}": {
+      "schema": { "$ref": "#/entities/Attendance" },
+      "description": "Daily attendance records"
+    },
+    "/orgs/{orgId}/breaks/{breakId}": {
+      "schema": { "$ref": "#/entities/Break" },
+      "description": "Daily break records"
+    }
+  }
+}

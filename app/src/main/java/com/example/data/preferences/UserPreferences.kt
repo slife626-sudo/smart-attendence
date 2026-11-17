@@ -16,10 +16,12 @@ class UserPreferences(private val context: Context) {
     private val keyStaffCode = stringPreferencesKey("staff_code")
     private val keyStaffPin = stringPreferencesKey("staff_pin")
     private val keyAdminLoggedIn = booleanPreferencesKey("admin_logged_in")
+    private val keyCustomOrgId = stringPreferencesKey("custom_org_id")
 
     val staffCode: Flow<String> = context.dataStore.data.map { it[keyStaffCode] ?: "01" }
     val staffPin: Flow<String> = context.dataStore.data.map { it[keyStaffPin] ?: "" }
     val adminLoggedIn: Flow<Boolean> = context.dataStore.data.map { it[keyAdminLoggedIn] ?: false }
+    val customOrgId: Flow<String> = context.dataStore.data.map { it[keyCustomOrgId] ?: "" }
 
     suspend fun saveStaffCode(code: String) {
         context.dataStore.edit { it[keyStaffCode] = code }
@@ -31,5 +33,9 @@ class UserPreferences(private val context: Context) {
 
     suspend fun setAdminLoggedIn(loggedIn: Boolean) {
         context.dataStore.edit { it[keyAdminLoggedIn] = loggedIn }
+    }
+
+    suspend fun saveCustomOrgId(orgId: String) {
+        context.dataStore.edit { it[keyCustomOrgId] = orgId.trim() }
     }
 }

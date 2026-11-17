@@ -347,8 +347,8 @@ fun AdminManualCorrectionSection(
     onSelectDate: (String) -> Unit,
     onSavePunch: (code: String, date: String, inT: String, outT: String, note: String) -> Unit,
     onDeletePunch: (code: String, date: String) -> Unit,
-    onSaveBreak: (id: Int, code: String, date: String, start: String, end: String) -> Unit,
-    onDeleteBreak: (id: Int) -> Unit
+    onSaveBreak: (docId: String, code: String, date: String, start: String, end: String) -> Unit,
+    onDeleteBreak: (docId: String) -> Unit
 ) {
     var staffMenu by remember { mutableStateOf(false) }
     var inTime by remember { mutableStateOf("") }
@@ -502,7 +502,7 @@ fun AdminManualCorrectionSection(
                                 IconButton(onClick = { editingBreak = b }) {
                                     Icon(Icons.Default.Edit, contentDescription = "সম্পাদনা", tint = EmeraldPrimary)
                                 }
-                                IconButton(onClick = { onDeleteBreak(b.id) }) {
+                                IconButton(onClick = { onDeleteBreak(b.docId) }) {
                                     Icon(Icons.Default.DeleteOutline, contentDescription = "মুছুন", tint = PunchRed)
                                 }
                             }
@@ -531,7 +531,7 @@ fun AdminManualCorrectionSection(
         var en by remember(brkToEdit) { mutableStateOf(brkToEdit.endTime) }
         AlertDialog(
             onDismissRequest = { editingBreak = null; showAddBreak = false },
-            title = { Text(if (brkToEdit.id == 0) "নতুন ব্রেক যোগ" else "ব্রেক সংশোধন", fontWeight = FontWeight.Bold) },
+            title = { Text(if (brkToEdit.docId.isBlank()) "নতুন ব্রেক যোগ" else "ব্রেক সংশোধন", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     TimePickerField("শুরু", st, { st = it }, Modifier.fillMaxWidth(), allowClear = false)
@@ -540,7 +540,7 @@ fun AdminManualCorrectionSection(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    onSaveBreak(brkToEdit.id, selectedStaffCode, selectedDate, st, en)
+                    onSaveBreak(brkToEdit.docId, selectedStaffCode, selectedDate, st, en)
                     editingBreak = null
                     showAddBreak = false
                 }) { Text("সংরক্ষণ", fontWeight = FontWeight.Bold) }

@@ -1,50 +1,69 @@
 package com.example.data.db
 
-import androidx.room.Entity
-import androidx.room.Index
-import androidx.room.PrimaryKey
+import androidx.annotation.Keep
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.IgnoreExtraProperties
+import com.google.firebase.firestore.ServerTimestamp
 
-@Entity(
-    tableName = "settings",
-    indices = [Index(value = ["key"], unique = true)]
+@Keep
+@IgnoreExtraProperties
+data class OrgWorkspace(
+    @DocumentId val docId: String = "",
+    val ownerId: String = "",
+    val memberUids: List<String> = emptyList(),
+    val orgName: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )
+
+@Keep
+@IgnoreExtraProperties
 data class SettingEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val key: String,
-    val value: String
+    @DocumentId val docId: String = "",
+    val ownerId: String = "",
+    val memberUids: List<String> = emptyList(),
+    val key: String = "",
+    val value: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )
 
-@Entity(
-    tableName = "branches",
-    indices = [Index(value = ["branch"], unique = true)]
-)
+@Keep
+@IgnoreExtraProperties
 data class BranchEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val branch: String,
+    @DocumentId val docId: String = "",
+    val ownerId: String = "",
+    val memberUids: List<String> = emptyList(),
+    val branch: String = "",
     val lat: String = "",
     val lng: String = "",
-    val radius: String = "150"
+    val radius: String = "150",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )
 
-@Entity(
-    tableName = "shifts",
-    indices = [Index(value = ["shift"], unique = true)]
-)
+@Keep
+@IgnoreExtraProperties
 data class ShiftEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val shift: String,
+    @DocumentId val docId: String = "",
+    val ownerId: String = "",
+    val memberUids: List<String> = emptyList(),
+    val shift: String = "",
     val startTime: String = "09:30",
-    val endTime: String = "21:30"
+    val endTime: String = "21:30",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )
 
-@Entity(
-    tableName = "staff",
-    indices = [Index(value = ["code"], unique = true)]
-)
+@Keep
+@IgnoreExtraProperties
 data class StaffEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val code: String,
-    val name: String,
+    @DocumentId val docId: String = "",
+    val ownerId: String = "",
+    val memberUids: List<String> = emptyList(),
+    val code: String = "",
+    val name: String = "",
     val designation: String = "",
     val branch: String = "",
     val shift: String = "সাধারণ",
@@ -55,61 +74,80 @@ data class StaffEntity(
     val leaveDate: String = "",
     val reservedDays: String = "",
     val probationMonths: String = "",
-    val faceJson: String = ""
+    val faceJson: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )
 
-@Entity(tableName = "holidays")
+@Keep
+@IgnoreExtraProperties
 data class HolidayEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val dateFrom: String,
+    @DocumentId val docId: String = "",
+    val ownerId: String = "",
+    val memberUids: List<String> = emptyList(),
+    val dateFrom: String = "",
     val dateTo: String = "",
     val name: String = "",
-    val branch: String = ""
+    val branch: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )
 
-@Entity(
-    tableName = "leave_types",
-    indices = [Index(value = ["ltype"], unique = true)]
-)
+@Keep
+@IgnoreExtraProperties
 data class LeaveTypeEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val ltype: String,
+    @DocumentId val docId: String = "",
+    val ownerId: String = "",
+    val memberUids: List<String> = emptyList(),
+    val ltype: String = "",
     val days: String = "",
     val paid: String = "Yes",
     val kind: String = "Leave",
-    val probation: String = ""
+    val probation: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )
 
-@Entity(tableName = "leaves")
+@Keep
+@IgnoreExtraProperties
 data class LeaveEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val code: String,
-    val dateFrom: String,
-    val dateTo: String,
-    val typ: String,
+    @DocumentId val docId: String = "",
+    val ownerId: String = "",
+    val memberUids: List<String> = emptyList(),
+    val code: String = "",
+    val dateFrom: String = "",
+    val dateTo: String = "",
+    val typ: String = "",
     val note: String = "",
     val status: String = "Approved",
     val appliedOn: String = "",
-    val reason: String = ""
+    val reason: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )
 
-@Entity(tableName = "transfers")
+@Keep
+@IgnoreExtraProperties
 data class TransferEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val code: String,
-    val effDate: String,
+    @DocumentId val docId: String = "",
+    val ownerId: String = "",
+    val memberUids: List<String> = emptyList(),
+    val code: String = "",
+    val effDate: String = "",
     val fromBranch: String = "",
-    val toBranch: String = ""
+    val toBranch: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )
 
-@Entity(
-    tableName = "attendance",
-    indices = [Index(value = ["date", "code"], unique = true), Index(value = ["date"])]
-)
+@Keep
+@IgnoreExtraProperties
 data class AttendanceEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val date: String,
-    val code: String,
+    @DocumentId val docId: String = "",
+    val ownerId: String = "",
+    val memberUids: List<String> = emptyList(),
+    val date: String = "",
+    val code: String = "",
     val name: String = "",
     val branch: String = "",
     val inTime: String = "",
@@ -118,19 +156,23 @@ data class AttendanceEntity(
     val outDist: String = "",
     val source: String = "Mobile",
     val note: String = "",
-    val upd: String = ""
+    val upd: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )
 
-@Entity(
-    tableName = "breaks",
-    indices = [Index(value = ["date", "code"])]
-)
+@Keep
+@IgnoreExtraProperties
 data class BreakEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val date: String,
-    val code: String,
-    val startTime: String,
+    @DocumentId val docId: String = "",
+    val ownerId: String = "",
+    val memberUids: List<String> = emptyList(),
+    val date: String = "",
+    val code: String = "",
+    val startTime: String = "",
     val endTime: String = "",
     val source: String = "Mobile",
-    val upd: String = ""
+    val upd: String = "",
+    @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null
 )

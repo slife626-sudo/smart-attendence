@@ -8,3 +8,4 @@ debug.keystore
 *.iml
 .idea/
 .DS_Store
+*-debug.log

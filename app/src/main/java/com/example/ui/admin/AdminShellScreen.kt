@@ -100,10 +100,15 @@ import com.example.ui.theme.PunchRed
 import com.example.ui.theme.TextMuted
 import kotlinx.coroutines.launch
 
+import androidx.compose.material3.TextButton
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminShellScreen(
     viewModel: AdminViewModel,
+    signedInEmail: String,
+    signedInUid: String,
+    onGoogleSignOut: () -> Unit,
     onNavigateBackToStaff: () -> Unit
 ) {
     val ctrl by viewModel.controls.collectAsStateWithLifecycle()
@@ -273,6 +278,37 @@ fun AdminShellScreen(
                             .verticalScroll(rememberScrollState())
                             .padding(14.dp)
                     ) {
+                        val streamErr = snap.streamError
+                        if (!streamErr.isNullOrBlank()) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = PunchRed.copy(alpha = 0.1f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "ক্লাউড সিঙ্ক সতর্কতা: $streamErr",
+                                        color = PunchRed,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        TextButton(onClick = { viewModel.switchWorkspaceOrgId("") }) {
+                                            Text("ডিফল্ট ওয়ার্কস্পেসে ফিরুন")
+                                        }
+                                        TextButton(onClick = { viewModel.selectSection(AdminSection.SETTINGS) }) {
+                                            Text("সেটিংস খুলুন")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         when (ctrl.section) {
                             AdminSection.DASH -> {
                                 val dash = remember(snap, ctrl.selectedMonth, ctrl.selectedBranch, ctrl.selectedDate) {
@@ -452,7 +488,16 @@ fun AdminShellScreen(
                                 AdminSettingsSetupSection(
                                     settingsList = snap.settingsList,
                                     settingsMap = snap.settings,
-                                    onSaveSettings = viewModel::saveSettingsBatch
+                                    workspace = snap.workspace,
+                                    effectiveOrgId = viewModel.effectiveOrgId,
+                                    signedInEmail = signedInEmail,
+                                    signedInUid = signedInUid,
+                                    importingData = ctrl.importingData,
+                                    onSaveSettings = viewModel::saveSettingsBatch,
+                                    onAddMemberUid = viewModel::addAuthorizedMemberUid,
+                                    onSwitchWorkspace = viewModel::switchWorkspaceOrgId,
+                                    onImportNeonJson = viewModel::importNeonJson,
+                                    onSignOutGoogle = onGoogleSignOut
                                 )
                             }
                         }

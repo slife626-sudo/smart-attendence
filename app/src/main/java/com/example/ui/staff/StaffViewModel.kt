@@ -11,11 +11,14 @@ import com.example.data.repository.StaffInfoResult
 import com.example.data.repository.StaffLeavePortalData
 import com.example.domain.AttendanceCalculator
 import com.example.hardware.LocationHelper
+import com.google.firebase.firestore.FirebaseFirestoreException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -50,11 +53,29 @@ class StaffViewModel(
     val uiState: StateFlow<StaffUiState> = _uiState.asStateFlow()
 
     val staffList: StateFlow<List<StaffEntity>> = repository.observeStaff
+        .catch { error ->
+            val firestoreError = generateSequence(error) { it.cause }
+                .filterIsInstance<FirebaseFirestoreException>()
+                .firstOrNull()
+            if (firestoreError == null && error is CancellationException) throw error
+            val rootError = firestoreError ?: error
+            _uiState.update {
+                it.copy(
+                    statusMessage = "ক্লাউড সিঙ্ক ত্রুটি: ${rootError.message ?: "অনুমতি নেই"}",
+                    statusOk = false
+                )
+            }
+            emit(emptyList())
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
         viewModelScope.launch {
-            repository.ensureSeeded()
+            val seedRes = repository.ensureSeeded()
+            if (seedRes.isFailure) {
+                val errMsg = seedRes.exceptionOrNull()?.localizedMessage ?: "ডেটাবেজ প্রস্তুত করতে সমস্যা"
+                _uiState.update { it.copy(statusMessage = errMsg, statusOk = false) }
+            }
             val savedCode = prefs.staffCode.first()
             val savedPin = prefs.staffPin.first()
             val cfg = repository.getSettingsMap()
@@ -77,6 +98,19 @@ class StaffViewModel(
                 _uiState.update { it.copy(clockText = AttendanceCalculator.toBanglaDigits(timeStr)) }
                 delay(1000L)
             }
+        }
+        viewModelScope.launch {
+            val yearNow = java.time.LocalDate.now().year
+            kotlinx.coroutines.flow.combine(
+                repository.observeStaff,
+                repository.observeAttendanceForYear(yearNow),
+                repository.observeBreaksForYear(yearNow),
+                repository.observeSettings
+            ) { _, _, _, _ -> Unit }
+                .catch { /* handled cleanly by staffList catch */ }
+                .collect {
+                    loadStaffInfo(_uiState.value.selectedCode)
+                }
         }
     }
 
@@ -123,7 +157,13 @@ class StaffViewModel(
             prefs.saveStaffPin(pin)
         }
         if (state.staffInfo.faceEnrolled) {
-            _uiState.update { it.copy(showFaceCameraForType = type, statusMessage = "ক্যামেরা চালু হচ্ছে...", statusOk = true) }
+            _uiState.update {
+                it.copy(
+                    showFaceCameraForType = type,
+                    statusMessage = "ক্যামেরা চালু হচ্ছে...",
+                    statusOk = true
+                )
+            }
         } else {
             executePunchWithLocation(type, context, emptyList())
         }
@@ -217,10 +257,10 @@ class StaffViewModel(
         }
     }
 
-    fun cancelLeave(leaveId: Int) {
+    fun cancelLeave(leaveDocId: String) {
         val s = _uiState.value
         viewModelScope.launch {
-            val res = repository.cancelStaffLeave(s.selectedCode, s.pin, leaveId)
+            val res = repository.cancelStaffLeave(s.selectedCode, s.pin, leaveDocId)
             refreshLeavePortal(res.message to res.ok)
         }
     }

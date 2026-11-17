@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.data.db.BranchEntity
+import com.example.data.db.OrgWorkspace
 import com.example.data.db.SettingEntity
 import com.example.data.db.ShiftEntity
 import com.example.domain.AttendanceCalculator
@@ -52,7 +53,7 @@ import com.example.ui.theme.TextMuted
 fun AdminShiftsSetupSection(
     shifts: List<ShiftEntity>,
     onSave: (ShiftEntity) -> Unit,
-    onDelete: (Int) -> Unit
+    onDelete: (String) -> Unit
 ) {
     var editing by remember { mutableStateOf<ShiftEntity?>(null) }
 
@@ -76,7 +77,7 @@ fun AdminShiftsSetupSection(
                         Text("${AttendanceCalculator.formatTime12h(sh.startTime)} — ${AttendanceCalculator.formatTime12h(sh.endTime)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
                     }
                     IconButton(onClick = { editing = sh }) { Icon(Icons.Default.Edit, contentDescription = "সম্পাদনা", tint = EmeraldPrimary) }
-                    IconButton(onClick = { onDelete(sh.id) }) { Icon(Icons.Default.DeleteOutline, contentDescription = "মুছুন", tint = PunchRed) }
+                    IconButton(onClick = { onDelete(sh.docId) }) { Icon(Icons.Default.DeleteOutline, contentDescription = "মুছুন", tint = PunchRed) }
                 }
             }
         }
@@ -112,7 +113,7 @@ fun AdminShiftsSetupSection(
 fun AdminBranchesSetupSection(
     branches: List<BranchEntity>,
     onSave: (BranchEntity) -> Unit,
-    onDelete: (Int) -> Unit
+    onDelete: (String) -> Unit
 ) {
     var editing by remember { mutableStateOf<BranchEntity?>(null) }
 
@@ -136,7 +137,7 @@ fun AdminBranchesSetupSection(
                         Text("GPS: ${b.lat}, ${b.lng} · ব্যাসার্ধ: ${AttendanceCalculator.toBanglaDigits(b.radius)} মি", style = MaterialTheme.typography.bodySmall, color = TextMuted)
                     }
                     IconButton(onClick = { editing = b }) { Icon(Icons.Default.Edit, contentDescription = "সম্পাদনা", tint = EmeraldPrimary) }
-                    IconButton(onClick = { onDelete(b.id) }) { Icon(Icons.Default.DeleteOutline, contentDescription = "মুছুন", tint = PunchRed) }
+                    IconButton(onClick = { onDelete(b.docId) }) { Icon(Icons.Default.DeleteOutline, contentDescription = "মুছুন", tint = PunchRed) }
                 }
             }
         }
@@ -176,7 +177,16 @@ fun AdminBranchesSetupSection(
 fun AdminSettingsSetupSection(
     settingsList: List<SettingEntity>,
     settingsMap: Map<String, String>,
-    onSaveSettings: (List<SettingEntity>) -> Unit
+    workspace: OrgWorkspace?,
+    effectiveOrgId: String,
+    signedInEmail: String,
+    signedInUid: String,
+    importingData: Boolean,
+    onSaveSettings: (List<SettingEntity>) -> Unit,
+    onAddMemberUid: (String) -> Unit,
+    onSwitchWorkspace: (String) -> Unit,
+    onImportNeonJson: (String) -> Unit,
+    onSignOutGoogle: () -> Unit
 ) {
     var orgName by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
@@ -200,52 +210,66 @@ fun AdminSettingsSetupSection(
         adminPass = settingsMap["AdminPass"] ?: "admin123"
     }
 
-    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("সিস্টেম সেটিংস", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = EmeraldPrimary)
-            OutlinedTextField(value = orgName, onValueChange = { orgName = it }, label = { Text("প্রতিষ্ঠানের নাম") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = address, onValueChange = { address = it }, label = { Text("ঠিকানা") }, modifier = Modifier.fillMaxWidth())
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = grace, onValueChange = { grace = it }, label = { Text("গ্রেস (মিনিট)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
-                OutlinedTextField(value = weeklyOff, onValueChange = { weeklyOff = it }, label = { Text("সাপ্তাহিক ছুটি") }, modifier = Modifier.weight(1f))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = maxAccuracy, onValueChange = { maxAccuracy = it }, label = { Text("সর্বোচ্চ GPS ত্রুটি (মি)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
-                OutlinedTextField(value = timezone, onValueChange = { timezone = it }, label = { Text("সময় অঞ্চল") }, modifier = Modifier.weight(1f))
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text("পাঞ্চে মুখ যাচাই বাধ্যতামূলক (FaceRequired)")
-                Switch(checked = faceRequired, onCheckedChange = { faceRequired = it })
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = faceThreshold, onValueChange = { faceThreshold = it }, label = { Text("Face Threshold") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
-                OutlinedTextField(value = adminPass, onValueChange = { adminPass = it }, label = { Text("অ্যাডমিন পাসওয়ার্ড") }, modifier = Modifier.weight(1f))
-            }
-            Button(
-                onClick = {
-                    val existingByKey = settingsList.associateBy { it.key }
-                    fun make(k: String, v: String) = (existingByKey[k] ?: SettingEntity(key = k, value = v)).copy(value = v)
-                    onSaveSettings(
-                        listOf(
-                            make("OrgName", orgName.trim()),
-                            make("Address", address.trim()),
-                            make("GraceMinutes", grace.trim().ifBlank { "15" }),
-                            make("WeeklyOff", weeklyOff.trim().ifBlank { "Fri" }),
-                            make("MaxAccuracy", maxAccuracy.trim().ifBlank { "100" }),
-                            make("Timezone", timezone.trim().ifBlank { "Asia/Dhaka" }),
-                            make("FaceRequired", if (faceRequired) "1" else "0"),
-                            make("FaceThreshold", faceThreshold.trim().ifBlank { "0.55" }),
-                            make("AdminPass", adminPass.trim().ifBlank { "admin123" })
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("সিস্টেম সেটিংস", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = EmeraldPrimary)
+                OutlinedTextField(value = orgName, onValueChange = { orgName = it }, label = { Text("প্রতিষ্ঠানের নাম") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = address, onValueChange = { address = it }, label = { Text("ঠিকানা") }, modifier = Modifier.fillMaxWidth())
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = grace, onValueChange = { grace = it }, label = { Text("গ্রেস (মিনিট)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+                    OutlinedTextField(value = weeklyOff, onValueChange = { weeklyOff = it }, label = { Text("সাপ্তাহিক ছুটি") }, modifier = Modifier.weight(1f))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = maxAccuracy, onValueChange = { maxAccuracy = it }, label = { Text("সর্বোচ্চ GPS ত্রুটি (মি)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+                    OutlinedTextField(value = timezone, onValueChange = { timezone = it }, label = { Text("সময় অঞ্চল") }, modifier = Modifier.weight(1f))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("পাঞ্চে মুখ যাচাই বাধ্যতামূলক (FaceRequired)")
+                    Switch(checked = faceRequired, onCheckedChange = { faceRequired = it })
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = faceThreshold, onValueChange = { faceThreshold = it }, label = { Text("Face Threshold") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f))
+                    OutlinedTextField(value = adminPass, onValueChange = { adminPass = it }, label = { Text("অ্যাডমিন পাসওয়ার্ড") }, modifier = Modifier.weight(1f))
+                }
+                Button(
+                    onClick = {
+                        val existingByKey = settingsList.associateBy { it.key }
+                        fun make(k: String, v: String) = (existingByKey[k] ?: SettingEntity(key = k, value = v)).copy(value = v)
+                        onSaveSettings(
+                            listOf(
+                                make("OrgName", orgName.trim()),
+                                make("Address", address.trim()),
+                                make("GraceMinutes", grace.trim().ifBlank { "15" }),
+                                make("WeeklyOff", weeklyOff.trim().ifBlank { "Fri" }),
+                                make("MaxAccuracy", maxAccuracy.trim().ifBlank { "100" }),
+                                make("Timezone", timezone.trim().ifBlank { "Asia/Dhaka" }),
+                                make("FaceRequired", if (faceRequired) "1" else "0"),
+                                make("FaceThreshold", faceThreshold.trim().ifBlank { "0.55" }),
+                                make("AdminPass", adminPass.trim().ifBlank { "admin123" })
+                            )
                         )
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
-            ) {
-                Icon(Icons.Default.Save, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("সেটিংস সংরক্ষণ করুন", fontWeight = FontWeight.Bold)
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                ) {
+                    Icon(Icons.Default.Save, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("সেটিংস সংরক্ষণ করুন", fontWeight = FontWeight.Bold)
+                }
             }
         }
+
+        AdminCloudSyncAndImportCards(
+            workspace = workspace,
+            effectiveOrgId = effectiveOrgId,
+            signedInEmail = signedInEmail,
+            signedInUid = signedInUid,
+            importingData = importingData,
+            onAddMemberUid = onAddMemberUid,
+            onSwitchWorkspace = onSwitchWorkspace,
+            onImportNeonJson = onImportNeonJson,
+            onSignOutGoogle = onSignOutGoogle
+        )
     }
 }

@@ -78,8 +78,8 @@ fun AdminLeaveAppsSection(
     settings: Map<String, String>,
     todayReal: String,
     onAddLeave: (code: String, type: String, from: String, to: String, reason: String) -> Unit,
-    onDecideLeave: (id: Int, status: String, note: String) -> Unit,
-    onDeleteLeave: (id: Int) -> Unit
+    onDecideLeave: (docId: String, status: String, note: String) -> Unit,
+    onDeleteLeave: (docId: String) -> Unit
 ) {
     var statusFilter by remember { mutableStateOf("All") }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -88,7 +88,7 @@ fun AdminLeaveAppsSection(
 
     val (ltMap, mainName) = remember(leaveTypes) { AttendanceCalculator.parseLeaveTypes(leaveTypes) }
     val filtered = remember(leaves, statusFilter) {
-        val sorted = leaves.sortedByDescending { it.id }
+        val sorted = leaves.sortedByDescending { it.appliedOn }
         when (statusFilter) {
             "Pending" -> sorted.filter { it.status.equals("Pending", true) }
             "Approved" -> sorted.filter { AttendanceCalculator.isApproved(it) }
@@ -212,7 +212,7 @@ fun AdminLeaveAppsSection(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(
-                                onClick = { onDecideLeave(lv.id, "Approved", "") },
+                                onClick = { onDecideLeave(lv.docId, "Approved", "") },
                                 colors = ButtonDefaults.buttonColors(containerColor = PunchGreen)
                             ) {
                                 Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -220,7 +220,7 @@ fun AdminLeaveAppsSection(
                                 Text("অনুমোদন")
                             }
                         }
-                        IconButton(onClick = { onDeleteLeave(lv.id) }) {
+                        IconButton(onClick = { onDeleteLeave(lv.docId) }) {
                             Icon(Icons.Default.DeleteOutline, contentDescription = "মুছুন", tint = PunchRed)
                         }
                     }
@@ -307,7 +307,7 @@ fun AdminLeaveAppsSection(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onDecideLeave(rej.id, "Rejected", rejectNote)
+                        onDecideLeave(rej.docId, "Rejected", rejectNote)
                         rejectTarget = null
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = PunchRed)
@@ -386,7 +386,7 @@ fun AdminTransferSection(
     transfers: List<TransferEntity>,
     todayReal: String,
     onAddTransfer: (code: String, effDate: String, newBranch: String) -> Unit,
-    onDeleteTransfer: (id: Int) -> Unit
+    onDeleteTransfer: (docId: String) -> Unit
 ) {
     var code by remember { mutableStateOf(staffList.firstOrNull()?.code ?: "01") }
     var newBranch by remember { mutableStateOf(branches.firstOrNull()?.branch ?: "") }
@@ -470,7 +470,7 @@ fun AdminTransferSection(
                             color = if (isFuture) AmberAccent else PunchGreen
                         )
                     }
-                    IconButton(onClick = { onDeleteTransfer(t.id) }) {
+                    IconButton(onClick = { onDeleteTransfer(t.docId) }) {
                         Icon(Icons.Default.DeleteOutline, contentDescription = "মুছুন", tint = PunchRed)
                     }
                 }

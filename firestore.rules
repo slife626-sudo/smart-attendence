@@ -1,0 +1,323 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() &&
+             request.auth.token.email == 'slife626@gmail.com' &&
+             request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function hasValidCommonMeta(data) {
+      return data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 &&
+             data.memberUids is list && data.memberUids.size() <= 50 &&
+             (data.memberUids.size() == 0 || data.memberUids[0] is string) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function canReadOrgDoc(orgId) {
+      return isSignedIn() && (
+        isBootstrappedAdmin() ||
+        orgId == request.auth.uid ||
+        request.auth.uid in existing().memberUids
+      );
+    }
+
+    function canCreateOrgDoc(orgId) {
+      return isSignedIn() &&
+             incoming().ownerId == request.auth.uid &&
+             (isBootstrappedAdmin() || orgId == request.auth.uid || request.auth.uid in incoming().memberUids);
+    }
+
+    function canUpdateOrgDoc(orgId) {
+      return isSignedIn() &&
+             incoming().ownerId == existing().ownerId &&
+             incoming().createdAt == existing().createdAt &&
+             (isBootstrappedAdmin() || orgId == request.auth.uid ||
+               (request.auth.uid in existing().memberUids && incoming().memberUids == existing().memberUids));
+    }
+
+    function canDeleteOrgDoc(orgId) {
+      return isSignedIn() && (
+        isBootstrappedAdmin() ||
+        orgId == request.auth.uid ||
+        existing().ownerId == request.auth.uid
+      );
+    }
+
+    function isValidOrgWorkspace(data) {
+      return hasValidCommonMeta(data) &&
+             data.orgName is string && data.orgName.size() >= 1 && data.orgName.size() <= 200;
+    }
+
+    function isValidSetting(data) {
+      return hasValidCommonMeta(data) &&
+             data.key is string && data.key.size() >= 1 && data.key.size() <= 80 &&
+             data.value is string && data.value.size() <= 500;
+    }
+
+    function isValidBranch(data) {
+      return hasValidCommonMeta(data) &&
+             data.branch is string && data.branch.size() >= 1 && data.branch.size() <= 120 &&
+             data.lat is string && data.lat.size() <= 40 &&
+             data.lng is string && data.lng.size() <= 40 &&
+             data.radius is string && data.radius.size() <= 20;
+    }
+
+    function isValidShift(data) {
+      return hasValidCommonMeta(data) &&
+             data.shift is string && data.shift.size() >= 1 && data.shift.size() <= 100 &&
+             data.startTime is string && data.startTime.size() <= 20 &&
+             data.endTime is string && data.endTime.size() <= 20;
+    }
+
+    function isValidStaff(data) {
+      return hasValidCommonMeta(data) &&
+             data.code is string && data.code.size() >= 1 && data.code.size() <= 40 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 160 &&
+             data.designation is string && data.designation.size() <= 120 &&
+             data.branch is string && data.branch.size() <= 120 &&
+             data.shift is string && data.shift.size() <= 100 &&
+             data.pin is string && data.pin.size() >= 1 && data.pin.size() <= 40 &&
+             data.status is string && data.status.size() <= 30 &&
+             data.weeklyOff is string && data.weeklyOff.size() <= 60 &&
+             data.joinDate is string && data.joinDate.size() <= 20 &&
+             data.leaveDate is string && data.leaveDate.size() <= 20 &&
+             data.reservedDays is string && data.reservedDays.size() <= 20 &&
+             data.probationMonths is string && data.probationMonths.size() <= 20 &&
+             data.faceJson is string && data.faceJson.size() <= 16384;
+    }
+
+    function isValidHoliday(data) {
+      return hasValidCommonMeta(data) &&
+             data.dateFrom is string && data.dateFrom.size() >= 1 && data.dateFrom.size() <= 20 &&
+             data.dateTo is string && data.dateTo.size() <= 20 &&
+             data.name is string && data.name.size() <= 160 &&
+             data.branch is string && data.branch.size() <= 400;
+    }
+
+    function isValidLeaveType(data) {
+      return hasValidCommonMeta(data) &&
+             data.ltype is string && data.ltype.size() >= 1 && data.ltype.size() <= 120 &&
+             data.days is string && data.days.size() <= 20 &&
+             data.paid is string && data.paid.size() <= 20 &&
+             data.kind is string && data.kind.size() <= 30 &&
+             data.probation is string && data.probation.size() <= 20;
+    }
+
+    function isValidLeave(data) {
+      return hasValidCommonMeta(data) &&
+             data.code is string && data.code.size() >= 1 && data.code.size() <= 40 &&
+             data.dateFrom is string && data.dateFrom.size() >= 1 && data.dateFrom.size() <= 20 &&
+             data.dateTo is string && data.dateTo.size() <= 20 &&
+             data.typ is string && data.typ.size() >= 1 && data.typ.size() <= 120 &&
+             data.note is string && data.note.size() <= 300 &&
+             data.status is string && data.status in ['Pending', 'Approved', 'Rejected', ''] &&
+             data.appliedOn is string && data.appliedOn.size() <= 30 &&
+             data.reason is string && data.reason.size() <= 350;
+    }
+
+    function isValidTransfer(data) {
+      return hasValidCommonMeta(data) &&
+             data.code is string && data.code.size() >= 1 && data.code.size() <= 40 &&
+             data.effDate is string && data.effDate.size() >= 1 && data.effDate.size() <= 20 &&
+             data.fromBranch is string && data.fromBranch.size() <= 120 &&
+             data.toBranch is string && data.toBranch.size() <= 120;
+    }
+
+    function isValidAttendance(data) {
+      return hasValidCommonMeta(data) &&
+             data.date is string && data.date.size() >= 1 && data.date.size() <= 20 &&
+             data.code is string && data.code.size() >= 1 && data.code.size() <= 40 &&
+             data.name is string && data.name.size() <= 160 &&
+             data.branch is string && data.branch.size() <= 120 &&
+             data.inTime is string && data.inTime.size() <= 20 &&
+             data.outTime is string && data.outTime.size() <= 20 &&
+             data.inDist is string && data.inDist.size() <= 30 &&
+             data.outDist is string && data.outDist.size() <= 30 &&
+             data.source is string && data.source.size() <= 40 &&
+             data.note is string && data.note.size() <= 300 &&
+             data.upd is string && data.upd.size() <= 60;
+    }
+
+    function isValidBreak(data) {
+      return hasValidCommonMeta(data) &&
+             data.date is string && data.date.size() >= 1 && data.date.size() <= 20 &&
+             data.code is string && data.code.size() >= 1 && data.code.size() <= 40 &&
+             data.startTime is string && data.startTime.size() >= 1 && data.startTime.size() <= 20 &&
+             data.endTime is string && data.endTime.size() <= 20 &&
+             data.source is string && data.source.size() <= 40 &&
+             data.upd is string && data.upd.size() <= 60;
+    }
+
+    match /orgs/{orgId} {
+      allow get: if isValidId(orgId) && canReadOrgDoc(orgId);
+      allow list: if canReadOrgDoc(orgId);
+      allow create: if isValidId(orgId) &&
+                       canCreateOrgDoc(orgId) &&
+                       incoming().keys().hasAll(['ownerId', 'memberUids', 'orgName', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['ownerId', 'memberUids', 'orgName', 'createdAt', 'updatedAt']) &&
+                       isValidOrgWorkspace(incoming());
+      allow update: if isValidId(orgId) &&
+                       canUpdateOrgDoc(orgId) &&
+                       isValidOrgWorkspace(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['orgName', 'memberUids', 'updatedAt']);
+      allow delete: if isValidId(orgId) && canDeleteOrgDoc(orgId);
+
+      match /settings/{settingId} {
+        allow get: if isValidId(orgId) && isValidId(settingId) && canReadOrgDoc(orgId);
+        allow list: if canReadOrgDoc(orgId);
+        allow create: if isValidId(orgId) && isValidId(settingId) && canCreateOrgDoc(orgId) &&
+                         incoming().keys().hasAll(['ownerId', 'memberUids', 'key', 'value', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['ownerId', 'memberUids', 'key', 'value', 'createdAt', 'updatedAt']) &&
+                         isValidSetting(incoming());
+        allow update: if isValidId(orgId) && isValidId(settingId) && canUpdateOrgDoc(orgId) &&
+                         isValidSetting(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['key', 'value', 'memberUids', 'updatedAt']);
+        allow delete: if isValidId(orgId) && isValidId(settingId) && canDeleteOrgDoc(orgId);
+      }
+
+      match /branches/{branchId} {
+        allow get: if isValidId(orgId) && isValidId(branchId) && canReadOrgDoc(orgId);
+        allow list: if canReadOrgDoc(orgId);
+        allow create: if isValidId(orgId) && isValidId(branchId) && canCreateOrgDoc(orgId) &&
+                         incoming().keys().hasAll(['ownerId', 'memberUids', 'branch', 'lat', 'lng', 'radius', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['ownerId', 'memberUids', 'branch', 'lat', 'lng', 'radius', 'createdAt', 'updatedAt']) &&
+                         isValidBranch(incoming());
+        allow update: if isValidId(orgId) && isValidId(branchId) && canUpdateOrgDoc(orgId) &&
+                         isValidBranch(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['branch', 'lat', 'lng', 'radius', 'memberUids', 'updatedAt']);
+        allow delete: if isValidId(orgId) && isValidId(branchId) && canDeleteOrgDoc(orgId);
+      }
+
+      match /shifts/{shiftId} {
+        allow get: if isValidId(orgId) && isValidId(shiftId) && canReadOrgDoc(orgId);
+        allow list: if canReadOrgDoc(orgId);
+        allow create: if isValidId(orgId) && isValidId(shiftId) && canCreateOrgDoc(orgId) &&
+                         incoming().keys().hasAll(['ownerId', 'memberUids', 'shift', 'startTime', 'endTime', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['ownerId', 'memberUids', 'shift', 'startTime', 'endTime', 'createdAt', 'updatedAt']) &&
+                         isValidShift(incoming());
+        allow update: if isValidId(orgId) && isValidId(shiftId) && canUpdateOrgDoc(orgId) &&
+                         isValidShift(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['shift', 'startTime', 'endTime', 'memberUids', 'updatedAt']);
+        allow delete: if isValidId(orgId) && isValidId(shiftId) && canDeleteOrgDoc(orgId);
+      }
+
+      match /staff/{staffId} {
+        allow get: if isValidId(orgId) && isValidId(staffId) && canReadOrgDoc(orgId);
+        allow list: if canReadOrgDoc(orgId);
+        allow create: if isValidId(orgId) && isValidId(staffId) && canCreateOrgDoc(orgId) &&
+                         incoming().keys().hasAll(['ownerId', 'memberUids', 'code', 'name', 'designation', 'branch', 'shift', 'pin', 'status', 'weeklyOff', 'joinDate', 'leaveDate', 'reservedDays', 'probationMonths', 'faceJson', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['ownerId', 'memberUids', 'code', 'name', 'designation', 'branch', 'shift', 'pin', 'status', 'weeklyOff', 'joinDate', 'leaveDate', 'reservedDays', 'probationMonths', 'faceJson', 'createdAt', 'updatedAt']) &&
+                         isValidStaff(incoming());
+        allow update: if isValidId(orgId) && isValidId(staffId) && canUpdateOrgDoc(orgId) &&
+                         isValidStaff(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['code', 'name', 'designation', 'branch', 'shift', 'pin', 'status', 'weeklyOff', 'joinDate', 'leaveDate', 'reservedDays', 'probationMonths', 'faceJson', 'memberUids', 'updatedAt']);
+        allow delete: if isValidId(orgId) && isValidId(staffId) && canDeleteOrgDoc(orgId);
+      }
+
+      match /holidays/{holidayId} {
+        allow get: if isValidId(orgId) && isValidId(holidayId) && canReadOrgDoc(orgId);
+        allow list: if canReadOrgDoc(orgId);
+        allow create: if isValidId(orgId) && isValidId(holidayId) && canCreateOrgDoc(orgId) &&
+                         incoming().keys().hasAll(['ownerId', 'memberUids', 'dateFrom', 'dateTo', 'name', 'branch', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['ownerId', 'memberUids', 'dateFrom', 'dateTo', 'name', 'branch', 'createdAt', 'updatedAt']) &&
+                         isValidHoliday(incoming());
+        allow update: if isValidId(orgId) && isValidId(holidayId) && canUpdateOrgDoc(orgId) &&
+                         isValidHoliday(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['dateFrom', 'dateTo', 'name', 'branch', 'memberUids', 'updatedAt']);
+        allow delete: if isValidId(orgId) && isValidId(holidayId) && canDeleteOrgDoc(orgId);
+      }
+
+      match /leave_types/{leaveTypeId} {
+        allow get: if isValidId(orgId) && isValidId(leaveTypeId) && canReadOrgDoc(orgId);
+        allow list: if canReadOrgDoc(orgId);
+        allow create: if isValidId(orgId) && isValidId(leaveTypeId) && canCreateOrgDoc(orgId) &&
+                         incoming().keys().hasAll(['ownerId', 'memberUids', 'ltype', 'days', 'paid', 'kind', 'probation', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['ownerId', 'memberUids', 'ltype', 'days', 'paid', 'kind', 'probation', 'createdAt', 'updatedAt']) &&
+                         isValidLeaveType(incoming());
+        allow update: if isValidId(orgId) && isValidId(leaveTypeId) && canUpdateOrgDoc(orgId) &&
+                         isValidLeaveType(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['ltype', 'days', 'paid', 'kind', 'probation', 'memberUids', 'updatedAt']);
+        allow delete: if isValidId(orgId) && isValidId(leaveTypeId) && canDeleteOrgDoc(orgId);
+      }
+
+      match /leaves/{leaveId} {
+        allow get: if isValidId(orgId) && isValidId(leaveId) && canReadOrgDoc(orgId);
+        allow list: if canReadOrgDoc(orgId);
+        allow create: if isValidId(orgId) && isValidId(leaveId) && canCreateOrgDoc(orgId) &&
+                         incoming().keys().hasAll(['ownerId', 'memberUids', 'code', 'dateFrom', 'dateTo', 'typ', 'note', 'status', 'appliedOn', 'reason', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['ownerId', 'memberUids', 'code', 'dateFrom', 'dateTo', 'typ', 'note', 'status', 'appliedOn', 'reason', 'createdAt', 'updatedAt']) &&
+                         isValidLeave(incoming());
+        allow update: if isValidId(orgId) && isValidId(leaveId) && canUpdateOrgDoc(orgId) &&
+                         isValidLeave(incoming()) &&
+                         (
+                           isBootstrappedAdmin() || orgId == request.auth.uid ||
+                           (existing().status == 'Pending' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'note', 'updatedAt']))
+                         );
+        allow delete: if isValidId(orgId) && isValidId(leaveId) && canDeleteOrgDoc(orgId);
+      }
+
+      match /transfers/{transferId} {
+        allow get: if isValidId(orgId) && isValidId(transferId) && canReadOrgDoc(orgId);
+        allow list: if canReadOrgDoc(orgId);
+        allow create: if isValidId(orgId) && isValidId(transferId) && canCreateOrgDoc(orgId) &&
+                         incoming().keys().hasAll(['ownerId', 'memberUids', 'code', 'effDate', 'fromBranch', 'toBranch', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['ownerId', 'memberUids', 'code', 'effDate', 'fromBranch', 'toBranch', 'createdAt', 'updatedAt']) &&
+                         isValidTransfer(incoming());
+        allow update: if isValidId(orgId) && isValidId(transferId) && canUpdateOrgDoc(orgId) &&
+                         isValidTransfer(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['code', 'effDate', 'fromBranch', 'toBranch', 'memberUids', 'updatedAt']);
+        allow delete: if isValidId(orgId) && isValidId(transferId) && canDeleteOrgDoc(orgId);
+      }
+
+      match /attendance/{attId} {
+        allow get: if isValidId(orgId) && isValidId(attId) && canReadOrgDoc(orgId);
+        allow list: if canReadOrgDoc(orgId);
+        allow create: if isValidId(orgId) && isValidId(attId) && canCreateOrgDoc(orgId) &&
+                         incoming().keys().hasAll(['ownerId', 'memberUids', 'date', 'code', 'name', 'branch', 'inTime', 'outTime', 'inDist', 'outDist', 'source', 'note', 'upd', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['ownerId', 'memberUids', 'date', 'code', 'name', 'branch', 'inTime', 'outTime', 'inDist', 'outDist', 'source', 'note', 'upd', 'createdAt', 'updatedAt']) &&
+                         isValidAttendance(incoming());
+        allow update: if isValidId(orgId) && isValidId(attId) && canUpdateOrgDoc(orgId) &&
+                         isValidAttendance(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'branch', 'inTime', 'outTime', 'inDist', 'outDist', 'source', 'note', 'upd', 'memberUids', 'updatedAt']);
+        allow delete: if isValidId(orgId) && isValidId(attId) && canDeleteOrgDoc(orgId);
+      }
+
+      match /breaks/{breakId} {
+        allow get: if isValidId(orgId) && isValidId(breakId) && canReadOrgDoc(orgId);
+        allow list: if canReadOrgDoc(orgId);
+        allow create: if isValidId(orgId) && isValidId(breakId) && canCreateOrgDoc(orgId) &&
+                         incoming().keys().hasAll(['ownerId', 'memberUids', 'date', 'code', 'startTime', 'endTime', 'source', 'upd', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['ownerId', 'memberUids', 'date', 'code', 'startTime', 'endTime', 'source', 'upd', 'createdAt', 'updatedAt']) &&
+                         isValidBreak(incoming());
+        allow update: if isValidId(orgId) && isValidId(breakId) && canUpdateOrgDoc(orgId) &&
+                         isValidBreak(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['startTime', 'endTime', 'source', 'upd', 'memberUids', 'updatedAt']);
+        allow delete: if isValidId(orgId) && isValidId(breakId) && canDeleteOrgDoc(orgId);
+      }
+    }
+  }
+}

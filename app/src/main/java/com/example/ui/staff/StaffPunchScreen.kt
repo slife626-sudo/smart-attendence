@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.Coffee
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -85,6 +87,8 @@ import com.example.ui.theme.TextMuted
 @Composable
 fun StaffPunchScreen(
     viewModel: StaffViewModel,
+    signedInEmail: String,
+    onGoogleSignOut: () -> Unit,
     onNavigateToAdmin: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -94,6 +98,7 @@ fun StaffPunchScreen(
     var staffDropdownExpanded by remember { mutableStateOf(false) }
     var pinVisible by remember { mutableStateOf(false) }
     var pendingPunchType by remember { mutableStateOf<String?>(null) }
+    var showSignOutDialog by remember { mutableStateOf(false) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -162,6 +167,16 @@ fun StaffPunchScreen(
                             text = "অ্যাডমিন",
                             color = EmeraldPrimary,
                             fontWeight = FontWeight.Bold
+                        )
+                    }
+                    IconButton(
+                        onClick = { showSignOutDialog = true },
+                        modifier = Modifier.testTag("staff_google_signout_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Logout,
+                            contentDescription = "Google অ্যাকাউন্ট সাইন-আউট",
+                            tint = TextMuted
                         )
                     }
                 }
@@ -498,6 +513,37 @@ fun StaffPunchScreen(
             onApply = viewModel::applyLeave,
             onCancelLeave = viewModel::cancelLeave,
             onDismiss = viewModel::closeLeavePortal
+        )
+    }
+
+    if (showSignOutDialog) {
+        AlertDialog(
+            onDismissRequest = { showSignOutDialog = false },
+            title = { Text("Google অ্যাকাউন্ট সাইন-আউট", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    text = if (signedInEmail.isNotBlank()) {
+                        "বর্তমান অ্যাকাউন্ট: $signedInEmail\n\nসাইন-আউট করে অন্য অ্যাকাউন্টে প্রবেশ করতে চান?"
+                    } else {
+                        "Google অ্যাকাউন্ট থেকে সাইন-আউট করতে চান?"
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSignOutDialog = false
+                        onGoogleSignOut()
+                    }
+                ) {
+                    Text("সাইন-আউট", color = PunchRed, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutDialog = false }) {
+                    Text("বাতিল")
+                }
+            }
         )
     }
 }

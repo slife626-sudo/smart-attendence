@@ -71,7 +71,7 @@ fun StaffLeaveDialog(
     statusMessage: String?,
     statusOk: Boolean,
     onApply: (type: String, from: String, to: String, reason: String) -> Unit,
-    onCancelLeave: (Int) -> Unit,
+    onCancelLeave: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var selectedType by remember { mutableStateOf("") }
@@ -434,8 +434,8 @@ fun StaffLeaveDialog(
                                         }
                                         if (st.equals("Pending", true)) {
                                             IconButton(
-                                                onClick = { onCancelLeave(app.id) },
-                                                modifier = Modifier.testTag("cancel_leave_${app.id}")
+                                                onClick = { onCancelLeave(app.docId) },
+                                                modifier = Modifier.testTag("cancel_leave_${app.docId}")
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.DeleteOutline,
