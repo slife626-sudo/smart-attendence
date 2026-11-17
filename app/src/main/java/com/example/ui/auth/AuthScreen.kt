@@ -1,10 +1,15 @@
 package com.example.ui.auth
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.MutableContextWrapper
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Button
@@ -32,6 +38,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,6 +55,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -75,8 +83,43 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import java.security.MessageDigest
 
 private const val AUTH_TAG = "Auth"
+private const val EXPECTED_DEBUG_SHA1 = "BA:30:44:7E:67:F8:29:FF:33:2A:F6:5F:17:D6:6C:28:2E:8D:E8:F9"
+
+private data class SigningFingerprints(
+    val sha1: String,
+    val sha256: String
+)
+
+private fun getAppSigningFingerprints(context: Context): SigningFingerprints? = try {
+    val pkgManager = context.packageManager
+    val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val info = pkgManager.getPackageInfo(
+            context.packageName,
+            PackageManager.GET_SIGNING_CERTIFICATES
+        )
+        val signingInfo = info.signingInfo
+        if (signingInfo?.hasMultipleSigners() == true) {
+            signingInfo.apkContentsSigners
+        } else {
+            signingInfo?.signingCertificateHistory
+        }
+    } else {
+        @Suppress("DEPRECATION")
+        pkgManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES).signatures
+    }
+    val certBytes = signatures?.firstOrNull()?.toByteArray() ?: return null
+    val sha1 = MessageDigest.getInstance("SHA-1").digest(certBytes)
+        .joinToString(":") { "%02X".format(it) }
+    val sha256 = MessageDigest.getInstance("SHA-256").digest(certBytes)
+        .joinToString(":") { "%02X".format(it) }
+    SigningFingerprints(sha1 = sha1, sha256 = sha256)
+} catch (e: Exception) {
+    Log.w(AUTH_TAG, "Unable to read signing certificate", e)
+    null
+}
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
@@ -204,6 +247,8 @@ fun AuthScreen(
     var checkingAuto by remember { mutableStateOf(true) }
     var isSigningIn by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showFingerprintInfo by remember { mutableStateOf(false) }
+    val appFingerprints = remember(context) { getAppSigningFingerprints(context) }
 
     LaunchedEffect(Unit) {
         attemptAutoSignIn(
@@ -285,16 +330,61 @@ fun AuthScreen(
                             color = PunchRed.copy(alpha = 0.12f),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = errorMessage!!,
-                                color = PunchRed,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.SemiBold,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier
-                                    .padding(10.dp)
-                                    .testTag("auth_error_text")
-                            )
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = errorMessage!!,
+                                    color = PunchRed,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.testTag("auth_error_text")
+                                )
+                                if (showFingerprintInfo && appFingerprints != null) {
+                                    val sha1Matches = appFingerprints.sha1.equals(
+                                        EXPECTED_DEBUG_SHA1,
+                                        ignoreCase = true
+                                    )
+                                    Text(
+                                        text = if (!sha1Matches) {
+                                            "কারণ: এই APK-এর SHA-1 Firebase-এ যুক্ত নেই!\nPackage: ${context.packageName}\nSHA-1: ${appFingerprints.sha1}\nSHA-256: ${appFingerprints.sha256}"
+                                        } else {
+                                            "SHA-1 মিলেছে (${appFingerprints.sha1})। আপনার ফোনে Google Play Services বা Google অ্যাকাউন্ট যাচাই করুন।"
+                                        },
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontFamily = FontFamily.Monospace,
+                                        textAlign = TextAlign.Start,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    if (!sha1Matches) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                                clipboard?.setPrimaryClip(
+                                                    ClipData.newPlainText(
+                                                        "SHA Fingerprints",
+                                                        "SHA-1: ${appFingerprints.sha1}\nSHA-256: ${appFingerprints.sha256}"
+                                                    )
+                                                )
+                                                Toast.makeText(context, "SHA-1 ও SHA-256 কপি হয়েছে", Toast.LENGTH_SHORT).show()
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.ContentCopy,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("SHA-1 ও SHA-256 কপি করুন")
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -316,6 +406,7 @@ fun AuthScreen(
                     Button(
                         onClick = {
                             errorMessage = null
+                            showFingerprintInfo = false
                             isSigningIn = true
                             onGoogleSignInClicked(
                                 context = activity ?: context,
@@ -326,11 +417,13 @@ fun AuthScreen(
                                 },
                                 onAuthError = { msg ->
                                     isSigningIn = false
+                                    showFingerprintInfo = true
                                     errorMessage = msg
                                 },
                                 scope = scope,
                                 onAuthCancelled = { detail ->
                                     isSigningIn = false
+                                    showFingerprintInfo = true
                                     errorMessage = if (!detail.isNullOrBlank()) {
                                         "সাইন ইন সম্পন্ন হয়নি ($detail) — অনুগ্রহ করে আবার চেষ্টা করুন"
                                     } else {
