@@ -684,7 +684,7 @@ private fun AdminLoginScreen(
                     Button(
                         onClick = { onLogin(password) },
                         modifier = Modifier.fillMaxWidth().height(48.dp).testTag("admin_login_button"),
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.White)
                     ) {
                         Text("প্রবেশ করুন", fontWeight = FontWeight.Bold)
                     }

@@ -2,6 +2,8 @@ package com.example.ui.auth
 
 import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.MutableContextWrapper
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -76,6 +78,12 @@ import kotlinx.coroutines.withContext
 
 private const val AUTH_TAG = "Auth"
 
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
 fun attemptAutoSignIn(
     context: Context,
     credentialManager: CredentialManager,
@@ -103,11 +111,14 @@ fun attemptAutoSignIn(
         .build()
     scope.launch {
         try {
-            val result = credentialManager.getCredential(context, request)
+            val activityContext = context.findActivity()?.let { MutableContextWrapper(it) } ?: context
+            val result = credentialManager.getCredential(activityContext, request)
             val cred = result.credential
             if (cred is CustomCredential && cred.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                 val token = GoogleIdTokenCredential.createFrom(cred.data).idToken
-                Firebase.auth.signInWithCredential(GoogleAuthProvider.getCredential(token, null)).await()
+                withContext(NonCancellable) {
+                    Firebase.auth.signInWithCredential(GoogleAuthProvider.getCredential(token, null)).await()
+                }
                 onAuthSuccess()
             } else {
                 onUnauthenticated()
@@ -125,7 +136,7 @@ fun onGoogleSignInClicked(
     onAuthSuccess: () -> Unit,
     onAuthError: (String) -> Unit,
     scope: CoroutineScope,
-    onAuthCancelled: () -> Unit = {}
+    onAuthCancelled: (String?) -> Unit = {}
 ) {
     val clientId = try {
         context.getString(R.string.default_web_client_id)
@@ -139,18 +150,20 @@ fun onGoogleSignInClicked(
         .build()
     scope.launch {
         try {
-            val activityContext = context as? Activity ?: context
+            val activityContext = context.findActivity()?.let { MutableContextWrapper(it) } ?: context
             val cred = credentialManager.getCredential(activityContext, request).credential
             if (cred is CustomCredential && cred.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                 val token = GoogleIdTokenCredential.createFrom(cred.data).idToken
-                Firebase.auth.signInWithCredential(GoogleAuthProvider.getCredential(token, null)).await()
+                withContext(NonCancellable) {
+                    Firebase.auth.signInWithCredential(GoogleAuthProvider.getCredential(token, null)).await()
+                }
                 onAuthSuccess()
             } else {
                 onAuthError("অপ্রত্যাশিত ক্রেডেনশিয়াল ধরন")
             }
         } catch (e: GetCredentialCancellationException) {
             Log.w(AUTH_TAG, "Google Sign-In flow cancelled or dismissed: ${e.message}", e)
-            onAuthCancelled()
+            onAuthCancelled(e.message)
         } catch (e: Exception) {
             Log.e(AUTH_TAG, "Google Sign-In failed", e)
             onAuthError(e.localizedMessage ?: "সাইন ইন ব্যর্থ হয়েছে")
@@ -182,8 +195,11 @@ fun AuthScreen(
     onAuthSuccess: () -> Unit
 ) {
     val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() }
     val scope = rememberCoroutineScope()
-    val credentialManager = remember(context) { CredentialManager.create(context) }
+    val credentialManager = remember(activity, context) {
+        CredentialManager.create(activity ?: context)
+    }
 
     var checkingAuto by remember { mutableStateOf(true) }
     var isSigningIn by remember { mutableStateOf(false) }
@@ -191,7 +207,7 @@ fun AuthScreen(
 
     LaunchedEffect(Unit) {
         attemptAutoSignIn(
-            context = context,
+            context = activity ?: context,
             credentialManager = credentialManager,
             onAuthSuccess = {
                 checkingAuto = false
@@ -220,7 +236,7 @@ fun AuthScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .widthIn(max = 440.dp),
+                    .widthIn(max = 420.dp),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -252,7 +268,7 @@ fun AuthScreen(
                         text = "ওয়াহীদিয়া ইসলামিয়া লাইব্রেরী",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
-                        color = EmeraldPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center
                     )
 
@@ -263,26 +279,10 @@ fun AuthScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = MintSurface,
-                        border = BorderStroke(1.dp, MintBorder),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            AuthHighlightRow("যেকোনো ফোন থেকে লাইভ হাজিরা ও রিপোর্ট")
-                            AuthHighlightRow("ফোন নষ্ট বা পরিবর্তন হলেও সব ডেটা সুরক্ষিত")
-                            AuthHighlightRow("পিসি / হাজিরা ডিভাইস ও মোবাইল একসাথে সিঙ্ক")
-                        }
-                    }
-
                     if (!errorMessage.isNullOrBlank()) {
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = PunchRed.copy(alpha = 0.1f),
+                            color = PunchRed.copy(alpha = 0.12f),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
@@ -302,10 +302,10 @@ fun AuthScreen(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier.padding(vertical = 8.dp)
+                            modifier = Modifier.padding(vertical = 4.dp)
                         ) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(22.dp),
+                                modifier = Modifier.size(20.dp),
                                 color = EmeraldPrimary,
                                 strokeWidth = 2.5.dp
                             )
@@ -318,7 +318,7 @@ fun AuthScreen(
                             errorMessage = null
                             isSigningIn = true
                             onGoogleSignInClicked(
-                                context = context,
+                                context = activity ?: context,
                                 credentialManager = credentialManager,
                                 onAuthSuccess = {
                                     isSigningIn = false
@@ -329,8 +329,13 @@ fun AuthScreen(
                                     errorMessage = msg
                                 },
                                 scope = scope,
-                                onAuthCancelled = {
+                                onAuthCancelled = { detail ->
                                     isSigningIn = false
+                                    errorMessage = if (!detail.isNullOrBlank()) {
+                                        "সাইন ইন সম্পন্ন হয়নি ($detail) — অনুগ্রহ করে আবার চেষ্টা করুন"
+                                    } else {
+                                        "সাইন ইন বাতিল হয়েছে — আবার চেষ্টা করুন"
+                                    }
                                 }
                             )
                         },
@@ -340,19 +345,36 @@ fun AuthScreen(
                             .height(54.dp)
                             .testTag("google_sign_in_button"),
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EmeraldPrimary,
+                            contentColor = Color.White,
+                            disabledContainerColor = EmeraldPrimary.copy(alpha = 0.6f),
+                            disabledContentColor = Color.White
+                        )
                     ) {
                         if (isSigningIn) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(22.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp
+                                color = Color.White,
+                                strokeWidth = 2.5.dp
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "সাইন ইন হচ্ছে...",
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
                         } else {
-                            Icon(Icons.Default.VerifiedUser, contentDescription = null)
+                            Icon(
+                                imageVector = Icons.Default.VerifiedUser,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Google দিয়ে সাইন ইন করুন",
+                                color = Color.White,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -371,7 +393,7 @@ fun AuthScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "নিরাপদ Firebase Cloud Firestore সংযোগ",
+                            text = "নিরাপদ Firebase Cloud সংযোগ",
                             style = MaterialTheme.typography.labelSmall,
                             color = TextMuted
                         )
@@ -379,23 +401,5 @@ fun AuthScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun AuthHighlightRow(text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Surface(
-            modifier = Modifier.size(7.dp),
-            shape = CircleShape,
-            color = EmeraldPrimary
-        ) {}
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = EmeraldPrimary,
-            fontWeight = FontWeight.Medium
-        )
     }
 }

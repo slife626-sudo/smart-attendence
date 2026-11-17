@@ -45,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -183,7 +184,7 @@ fun AdminCloudSyncAndImportCards(
                 Button(
                     onClick = { onSwitchWorkspace(workspaceInput) },
                     modifier = Modifier.weight(1f).height(48.dp).testTag("switch_workspace_button"),
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.White)
                 ) {
                     Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
@@ -225,7 +226,7 @@ fun AdminCloudSyncAndImportCards(
                 },
                 enabled = memberUidInput.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(48.dp).testTag("add_member_uid_button"),
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldSecondary)
+                colors = ButtonDefaults.buttonColors(containerColor = EmeraldSecondary, contentColor = Color.White)
             ) {
                 Icon(Icons.Default.GroupAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
@@ -334,7 +335,7 @@ fun AdminCloudSyncAndImportCards(
                 onClick = { onImportNeonJson(jsonInput) },
                 enabled = !importingData && jsonInput.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(48.dp).testTag("import_neon_json_button"),
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.White)
             ) {
                 if (importingData) {
                     CircularProgressIndicator(

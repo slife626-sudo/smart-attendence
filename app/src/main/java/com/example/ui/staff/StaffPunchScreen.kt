@@ -367,7 +367,7 @@ fun StaffPunchScreen(
                                     .height(64.dp)
                                     .testTag("punch_in_button"),
                                 shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = PunchGreen)
+                                colors = ButtonDefaults.buttonColors(containerColor = PunchGreen, contentColor = Color.White)
                             ) {
                                 Icon(Icons.Default.Login, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -385,7 +385,7 @@ fun StaffPunchScreen(
                                     .height(64.dp)
                                     .testTag("punch_out_button"),
                                 shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = PunchRed)
+                                colors = ButtonDefaults.buttonColors(containerColor = PunchRed, contentColor = Color.White)
                             ) {
                                 Icon(Icons.Default.Logout, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -410,7 +410,7 @@ fun StaffPunchScreen(
                                     .height(48.dp)
                                     .testTag("break_start_button"),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent)
+                                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.White)
                             ) {
                                 Icon(Icons.Default.Coffee, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -429,7 +429,7 @@ fun StaffPunchScreen(
                                     .height(48.dp)
                                     .testTag("break_end_button"),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7), contentColor = Color.White)
                             ) {
                                 Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))

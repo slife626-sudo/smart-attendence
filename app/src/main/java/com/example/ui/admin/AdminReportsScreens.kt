@@ -54,6 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -134,7 +135,7 @@ fun AdminStaffReportSection(
                 Button(
                     onClick = { printStaffReport(context, report, selectedMonth) },
                     modifier = Modifier.height(54.dp).testTag("print_staff_report_button"),
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.White)
                 ) {
                     Icon(Icons.Default.Print, contentDescription = "প্রিন্ট বা PDF")
                 }
@@ -439,7 +440,7 @@ fun AdminManualCorrectionSection(
                     Button(
                         onClick = { onSavePunch(selectedStaffCode, selectedDate, inTime, outTime, note) },
                         modifier = Modifier.weight(1f).height(48.dp).testTag("save_manual_punch_button"),
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.White)
                     ) {
                         Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))

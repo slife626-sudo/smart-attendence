@@ -4,10 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,12 +29,8 @@ import com.example.ui.staff.StaffViewModel
 import com.example.ui.theme.WahidiyaTheme
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
@@ -40,14 +39,6 @@ data object StaffPunchRoute
 
 @Serializable
 data object AdminRoute
-
-private fun FirebaseAuth.authStateFlow(): Flow<FirebaseUser?> = callbackFlow {
-    val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
-        trySend(firebaseAuth.currentUser)
-    }
-    addAuthStateListener(listener)
-    awaitClose { removeAuthStateListener(listener) }
-}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,14 +49,27 @@ class MainActivity : ComponentActivity() {
             WahidiyaTheme {
                 val context = LocalContext.current
                 val scope = rememberCoroutineScope()
-                val authFlow = remember { Firebase.auth.authStateFlow() }
-                val currentUser by authFlow.collectAsStateWithLifecycle(initialValue = Firebase.auth.currentUser)
+                val auth = remember { Firebase.auth }
+                var currentUser by remember { mutableStateOf(auth.currentUser) }
+
+                DisposableEffect(auth) {
+                    val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+                        currentUser = firebaseAuth.currentUser
+                    }
+                    auth.addAuthStateListener(listener)
+                    onDispose { auth.removeAuthStateListener(listener) }
+                }
+
                 val prefs = remember { UserPreferences(applicationContext) }
                 val credentialManager = remember(context) { CredentialManager.create(context) }
 
                 val user = currentUser
                 if (user == null) {
-                    AuthScreen(onAuthSuccess = {})
+                    AuthScreen(
+                        onAuthSuccess = {
+                            currentUser = auth.currentUser
+                        }
+                    )
                 } else {
                     val customOrgId by prefs.customOrgId.collectAsStateWithLifecycle(initialValue = "")
                     val isBootstrappedAdmin = user.email.equals(
@@ -94,7 +98,10 @@ class MainActivity : ComponentActivity() {
                             }
                             signOutGoogleAccount(
                                 credentialManager = credentialManager,
-                                scope = scope
+                                scope = scope,
+                                onSignOutComplete = {
+                                    currentUser = null
+                                }
                             )
                         }
 

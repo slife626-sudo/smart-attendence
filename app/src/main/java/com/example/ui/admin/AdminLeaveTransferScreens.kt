@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -118,7 +119,7 @@ fun AdminLeaveAppsSection(
             Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = { showAddDialog = true },
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.White),
                 modifier = Modifier.testTag("admin_add_leave_button")
             ) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -213,7 +214,7 @@ fun AdminLeaveAppsSection(
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(
                                 onClick = { onDecideLeave(lv.docId, "Approved", "") },
-                                colors = ButtonDefaults.buttonColors(containerColor = PunchGreen)
+                                colors = ButtonDefaults.buttonColors(containerColor = PunchGreen, contentColor = Color.White)
                             ) {
                                 Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -441,7 +442,7 @@ fun AdminTransferSection(
                 Button(
                     onClick = { onAddTransfer(code, effDate, newBranch) },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.White)
                 ) {
                     Icon(Icons.Default.SwapHoriz, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
@@ -511,7 +512,7 @@ fun AdminFaceEnrollmentSection(
                     }
                     Button(
                         onClick = { enrollTarget = s },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.White),
                         modifier = Modifier.height(44.dp)
                     ) {
                         Icon(Icons.Default.Face, contentDescription = null, modifier = Modifier.size(18.dp))

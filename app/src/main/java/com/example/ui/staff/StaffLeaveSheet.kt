@@ -354,7 +354,7 @@ fun StaffLeaveDialog(
                                 .fillMaxWidth()
                                 .height(48.dp)
                                 .testTag("submit_leave_button"),
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.White)
                         ) {
                             Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
